@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/NexusM.SharedKernel/NexusM.SharedKernel.csproj" />
+    <Project Path="src/NexusM.BuildingBlocks/NexusM.BuildingBlocks.csproj" />
+    <Project Path="src/Modules/Audit/NexusM.Modules.Audit.csproj" />
+    <Project Path="src/Modules/Foundation/NexusM.Modules.Foundation.csproj" />
+    <Project Path="src/NexusM.Api/NexusM.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/NexusM.IntegrationTests/NexusM.IntegrationTests.csproj" />
+  </Folder>
+</Solution>
