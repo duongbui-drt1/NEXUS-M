@@ -37,11 +37,19 @@ public sealed record FxRateQuoteDto(
     DateTimeOffset AsOfUtc,
     string Source = "NEXUS_C_FX");
 
+public sealed record CoreWorkflowStartResultDto(Guid InstanceId, Guid? CurrentTaskId, string Status);
+public sealed record CoreWorkflowDecisionResultDto(Guid InstanceId, string InstanceStatus, string Outcome);
+public sealed record CoreAiGatewayResultDto(string Provider, string Model, string AnswerText, int PromptTokens, int CompletionTokens, decimal EstimatedCostUsd);
+
 public interface INexusCoreClient
 {
     Task<Result<EntitlementEvaluationDto>> EvaluateEntitlementAsync(Guid tenantId, string featureCode, string userBearerToken, string correlationId, CancellationToken ct = default);
     Task<Result<UserAuthorizationSnapshot>> GetUserAuthorizationSnapshotAsync(Guid tenantId, Guid userId, string userBearerToken, string correlationId, CancellationToken ct = default);
     Task<Result<FxRateQuoteDto>> GetFxRateAsync(string baseCurrency, string quoteCurrency, string userBearerToken, string correlationId, CancellationToken ct = default);
+    Task<Result<CoreWorkflowStartResultDto>> StartWorkflowInstanceAsync(string workflowDefinitionCode, string businessReferenceId, string title, string userBearerToken, string correlationId, CancellationToken ct = default);
+    Task<Result<CoreWorkflowDecisionResultDto>> DecideWorkflowTaskAsync(Guid cTaskId, string decision, string? comment, string userBearerToken, string correlationId, CancellationToken ct = default);
+    Task<Result<bool>> SendNotificationAsync(Guid recipientUserId, string subject, string body, string idempotencyKey, string userBearerToken, string correlationId, CancellationToken ct = default);
+    Task<Result<CoreAiGatewayResultDto>> InvokeAiGatewayAsync(string modelCode, string groundedPrompt, string userBearerToken, string correlationId, CancellationToken ct = default);
     Task<Result<bool>> SyncPermissionManifestAsync(string correlationId, CancellationToken ct = default);
 }
 
@@ -214,6 +222,141 @@ public sealed class NexusCoreHttpClient(
         {
             logger.LogError(ex, "NEXUS C FX lookup failed for {From}->{To}", from, to);
             return Error.ServiceUnavailable("NEXUS_C_FX_UNREACHABLE", "NEXUS C FX service is unreachable.");
+        }
+    }
+
+    public async Task<Result<CoreWorkflowStartResultDto>> StartWorkflowInstanceAsync(
+        string workflowDefinitionCode,
+        string businessReferenceId,
+        string title,
+        string userBearerToken,
+        string correlationId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v1/platform/workflows/instances");
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", userBearerToken);
+            req.Headers.TryAddWithoutValidation("X-Correlation-Id", correlationId);
+            req.Headers.TryAddWithoutValidation("Idempotency-Key", $"m-wf-start:{businessReferenceId}");
+            req.Content = JsonContent.Create(new { definitionCode = workflowDefinitionCode, referenceId = businessReferenceId, title });
+
+            using var resp = await httpClient.SendAsync(req, ct);
+            if (!resp.IsSuccessStatusCode)
+            {
+                return Error.ServiceUnavailable("NEXUS_C_WORKFLOW_START_FAILED", $"NEXUS C workflow start returned HTTP {(int)resp.StatusCode}.");
+            }
+
+            var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
+            var data = doc.GetProperty("data");
+            return new CoreWorkflowStartResultDto(
+                data.GetProperty("id").GetGuid(),
+                data.TryGetProperty("currentTaskId", out var tId) && tId.ValueKind == JsonValueKind.String && Guid.TryParse(tId.GetString(), out var g) ? g : null,
+                data.TryGetProperty("status", out var st) ? st.GetString() ?? "Submitted" : "Submitted");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to start workflow in NEXUS C for {Ref}", businessReferenceId);
+            return Error.ServiceUnavailable("NEXUS_C_WORKFLOW_UNREACHABLE", "NEXUS C Workflow Engine is unreachable.");
+        }
+    }
+
+    public async Task<Result<CoreWorkflowDecisionResultDto>> DecideWorkflowTaskAsync(
+        Guid cTaskId,
+        string decision,
+        string? comment,
+        string userBearerToken,
+        string correlationId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/platform/workflows/tasks/{cTaskId:D}/decide");
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", userBearerToken);
+            req.Headers.TryAddWithoutValidation("X-Correlation-Id", correlationId);
+            req.Content = JsonContent.Create(new { decision, comment });
+
+            using var resp = await httpClient.SendAsync(req, ct);
+            if (!resp.IsSuccessStatusCode)
+            {
+                return Error.ServiceUnavailable("NEXUS_C_WORKFLOW_DECIDE_FAILED", $"NEXUS C workflow decision returned HTTP {(int)resp.StatusCode}.");
+            }
+
+            var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
+            var data = doc.GetProperty("data");
+            return new CoreWorkflowDecisionResultDto(
+                data.GetProperty("instanceId").GetGuid(),
+                data.TryGetProperty("status", out var st) ? st.GetString() ?? decision : decision,
+                decision);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to decide workflow task {TaskId} in NEXUS C", cTaskId);
+            return Error.ServiceUnavailable("NEXUS_C_WORKFLOW_UNREACHABLE", "NEXUS C Workflow Engine is unreachable.");
+        }
+    }
+
+    public async Task<Result<bool>> SendNotificationAsync(
+        Guid recipientUserId,
+        string subject,
+        string body,
+        string idempotencyKey,
+        string userBearerToken,
+        string correlationId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v1/platform/notifications/send");
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", userBearerToken);
+            req.Headers.TryAddWithoutValidation("X-Correlation-Id", correlationId);
+            req.Headers.TryAddWithoutValidation("Idempotency-Key", idempotencyKey);
+            req.Content = JsonContent.Create(new { channel = "InApp", recipientUserId, subject, body });
+
+            using var resp = await httpClient.SendAsync(req, ct);
+            return resp.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "NEXUS C notification send degraded for recipient {Recipient}", recipientUserId);
+            return false;
+        }
+    }
+
+    public async Task<Result<CoreAiGatewayResultDto>> InvokeAiGatewayAsync(
+        string modelCode,
+        string groundedPrompt,
+        string userBearerToken,
+        string correlationId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v1/platform/integrations/ai/invoke");
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", userBearerToken);
+            req.Headers.TryAddWithoutValidation("X-Correlation-Id", correlationId);
+            req.Content = JsonContent.Create(new { model = modelCode, prompt = groundedPrompt });
+
+            using var resp = await httpClient.SendAsync(req, ct);
+            if (!resp.IsSuccessStatusCode)
+            {
+                return Error.ServiceUnavailable("NEXUS_C_AI_UNAVAILABLE", $"NEXUS C AI Gateway returned HTTP {(int)resp.StatusCode}.");
+            }
+
+            var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
+            var data = doc.GetProperty("data");
+            return new CoreAiGatewayResultDto(
+                data.TryGetProperty("provider", out var pv) ? pv.GetString() ?? "NEXUS_C_AI" : "NEXUS_C_AI",
+                data.TryGetProperty("model", out var md) ? md.GetString() ?? modelCode : modelCode,
+                data.TryGetProperty("output", out var outText) ? outText.GetString() ?? string.Empty : string.Empty,
+                data.TryGetProperty("promptTokens", out var pt) ? pt.GetInt32() : 0,
+                data.TryGetProperty("completionTokens", out var ctTok) ? ctTok.GetInt32() : 0,
+                data.TryGetProperty("estimatedCostUsd", out var cost) ? cost.GetDecimal() : 0m);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "NEXUS C AI Gateway invocation failed");
+            return Error.ServiceUnavailable("NEXUS_C_AI_UNREACHABLE", "NEXUS C AI Gateway is unreachable.");
         }
     }
 
