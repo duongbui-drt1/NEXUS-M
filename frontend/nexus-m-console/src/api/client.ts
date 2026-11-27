@@ -1,4 +1,16 @@
-import type { ApiResponse, BusinessAuditDto, ManagementContextDto, PagedResult, UserPreferenceDto, WorkspaceDto } from '../types';
+import type {
+  ApiResponse,
+  BusinessAuditDto,
+  DataConnectorDto,
+  DeadLetterItemDto,
+  IngestionRunDto,
+  ManagementContextDto,
+  MetricDefinitionDto,
+  PagedResult,
+  ReconciliationRecordDto,
+  UserPreferenceDto,
+  WorkspaceDto,
+} from '../types';
 
 export class ApiError extends Error {
   status: number;
@@ -73,4 +85,30 @@ export const nexusMApi = {
   }) => request<UserPreferenceDto>('/api/v1/m/preferences', { method: 'PUT', body: JSON.stringify(payload) }),
   listAudit: (page = 1, pageSize = 20) =>
     request<PagedResult<BusinessAuditDto>>(`/api/v1/m/audit?page=${page}&pageSize=${pageSize}`),
+  listMetricDefinitions: () => request<MetricDefinitionDto[]>('/api/v1/m/metrics/definitions'),
+  createMetricDefinition: (payload: {
+    metricCode: string;
+    displayNameKey: string;
+    descriptionKey: string;
+    formulaExpression: string;
+    unit: number;
+    currencyCode?: string | null;
+    timeBasis: number;
+    aggregationMethod: number;
+    accountingBasis: number;
+    sourceApplication: string;
+    freshnessSlaMinutes: number;
+  }) => request<MetricDefinitionDto>('/api/v1/m/metrics/definitions', { method: 'POST', body: JSON.stringify(payload) }),
+  listConnectors: () => request<DataConnectorDto[]>('/api/v1/m/integrations/connectors'),
+  createConnector: (payload: {
+    code: string;
+    name: string;
+    sourceApplication: string;
+    freshnessSlaMinutes: number;
+    secretReference?: string | null;
+  }) => request<DataConnectorDto>('/api/v1/m/integrations/connectors', { method: 'POST', body: JSON.stringify(payload) }),
+  listRuns: () => request<IngestionRunDto[]>('/api/v1/m/integrations/runs'),
+  listDeadLetters: () => request<DeadLetterItemDto[]>('/api/v1/m/integrations/dead-letters'),
+  retryDeadLetter: (id: string) => request<DeadLetterItemDto>(`/api/v1/m/integrations/dead-letters/${id}/retry`, { method: 'POST' }),
+  listReconciliations: () => request<ReconciliationRecordDto[]>('/api/v1/m/integrations/reconciliations'),
 };

@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppShell } from '../src/components/AppShell';
 import { AuditLogPage, WorkspacePage } from '../src/pages/FoundationPages';
+import { IntegrationsPage, KpiCatalogPage } from '../src/pages/Phase3DataPages';
 import type { ManagementContextDto } from '../src/types';
 
 function makeContext(permissions: string[]): ManagementContextDto {
@@ -97,6 +98,26 @@ describe('NEXUS M AppShell & Permission-Aware Rendering', () => {
     render(
       <QueryClientProvider client={qc}>
         <AuditLogPage context={ctxWithoutAudit} />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('Vui lòng liên hệ Admin để xem chi tiết');
+  });
+
+  it('guards KPI Catalog and Data & Integration Hub when user lacks m.kpi.read / m.integration.read', () => {
+    const qc = new QueryClient();
+    const ctxRestricted = makeContext(['m.workspace.read']);
+
+    const { unmount } = render(
+      <QueryClientProvider client={qc}>
+        <KpiCatalogPage context={ctxRestricted} />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('Vui lòng liên hệ Admin để xem chi tiết');
+    unmount();
+
+    render(
+      <QueryClientProvider client={qc}>
+        <IntegrationsPage context={ctxRestricted} />
       </QueryClientProvider>,
     );
     expect(screen.getByRole('alert')).toHaveTextContent('Vui lòng liên hệ Admin để xem chi tiết');

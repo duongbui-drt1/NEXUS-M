@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { Building2, Layers, ShieldCheck, SlidersHorizontal, Lock } from 'lucide-react';
+import { Building2, Database, Gauge, Layers, ShieldCheck, SlidersHorizontal, Lock } from 'lucide-react';
 import type { ManagementContextDto } from '../types';
 
 const MODULE_LABELS: Record<string, { vi: string; en: string }> = {
@@ -34,6 +34,7 @@ export const AppShell: React.FC<AppShellProps> = ({ context, onLogout }) => {
   const isVi = context.preferences.locale.toLowerCase().startsWith('vi');
   const lang = isVi ? 'vi' : 'en';
   const hasAudit = context.permissions.includes('m.audit.read');
+  const hasKpi = context.permissions.includes('m.kpi.read');
 
   return (
     <div className="shell">
@@ -60,6 +61,12 @@ export const AppShell: React.FC<AppShellProps> = ({ context, onLogout }) => {
             <SlidersHorizontal size={16} />
             <span>{isVi ? 'Tùy chọn cá nhân' : 'Preferences'}</span>
           </NavLink>
+          {hasKpi && (
+            <NavLink to="/kpis" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+              <Gauge size={16} />
+              <span>{isVi ? 'Danh mục KPI' : 'KPI Catalog'}</span>
+            </NavLink>
+          )}
           {hasAudit && (
             <NavLink to="/audit" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
               <ShieldCheck size={16} />
@@ -74,14 +81,25 @@ export const AppShell: React.FC<AppShellProps> = ({ context, onLogout }) => {
             .filter((m) => m.code !== 'M00')
             .map((mod) => {
               const label = MODULE_LABELS[mod.code]?.[lang] ?? mod.code;
-              const disabled = !mod.isAccessible;
+              if (mod.isAccessible) {
+                return (
+                  <NavLink
+                    key={mod.code}
+                    to={mod.route}
+                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                  >
+                    <Database size={14} />
+                    <span>{label}</span>
+                  </NavLink>
+                );
+              }
               return (
                 <div
                   key={mod.code}
-                  className={`nav-item ${disabled ? 'disabled' : ''}`}
-                  title={disabled ? (isVi ? 'Chưa kích hoạt hoặc chưa đủ quyền' : 'Not entitled or planned') : label}
+                  className="nav-item disabled"
+                  title={isVi ? 'Chưa kích hoạt hoặc chưa đủ quyền' : 'Not entitled or planned'}
                 >
-                  {disabled ? <Lock size={14} /> : <Layers size={14} />}
+                  <Lock size={14} />
                   <span>{label}</span>
                 </div>
               );

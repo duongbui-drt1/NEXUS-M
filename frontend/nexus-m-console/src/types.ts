@@ -88,3 +88,77 @@ export interface BusinessAuditDto {
   correlationId: string;
   occurredAtUtc: string;
 }
+
+export interface MetricVersionDto {
+  id: string;
+  version: number;
+  formulaExpression: string;
+  unit: string;
+  currencyCode?: string | null;
+  timeBasis: string;
+  aggregationMethod: string;
+  accountingBasis: string;
+  sourceApplication: string;
+  freshnessSlaMinutes: number;
+  accessClassification: string;
+  publishedAtUtc: string;
+}
+
+export interface MetricDefinitionDto {
+  id: string;
+  tenantId: string;
+  metricCode: string;
+  displayNameKey: string;
+  descriptionKey: string;
+  currentVersion: number;
+  isActive: boolean;
+  latestVersion: MetricVersionDto;
+  versions: MetricVersionDto[];
+}
+
+export interface DataConnectorDto {
+  id: string;
+  code: string;
+  name: string;
+  sourceApplication: string;
+  schemaVersion: number;
+  freshnessSlaMinutes: number;
+  hasSecretReference: boolean;
+  isEnabled: boolean;
+  lastSucceededAtUtc?: string | null;
+  createdAtUtc: string;
+}
+
+export interface IngestionRunDto {
+  id: string;
+  sourceApplication: string;
+  status: string;
+  recordsReceived: number;
+  recordsAccepted: number;
+  recordsDeduplicated: number;
+  errorSummary?: string | null;
+  correlationId: string;
+  completedAtUtc: string;
+}
+
+export interface DeadLetterItemDto {
+  id: string;
+  eventType: string;
+  producer: string;
+  failureReason: string;
+  manualRetryCount: number;
+  status: string;
+  failedAtUtc: string;
+}
+
+export interface ReconciliationRecordDto {
+  id: string;
+  metricCode: string;
+  sourceApplication: string;
+  expectedCount: number;
+  actualCount: number;
+  expectedSum: number;
+  actualSum: number;
+  status: 'MATCHED' | 'DISCREPANCY';
+  checkedAtUtc: string;
+}

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-quer
 import { getStoredToken, nexusMApi, setStoredToken } from './api/client';
 import { AppShell, ForbiddenBanner } from './components/AppShell';
 import { AuditLogPage, ModuleRegistryPage, PreferencesPage, WorkspacePage } from './pages/FoundationPages';
+import { IntegrationsPage, KpiCatalogPage } from './pages/Phase3DataPages';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -93,6 +94,8 @@ const AuthenticatedApp: React.FC = () => {
       >
         <Route path="/workspace" element={<WorkspacePage context={ctx} />} />
         <Route path="/modules" element={<ModuleRegistryPage context={ctx} />} />
+        <Route path="/kpis" element={<KpiCatalogPage context={ctx} />} />
+        <Route path="/integrations" element={<IntegrationsPage context={ctx} />} />
         <Route path="/preferences" element={<PreferencesPage context={ctx} />} />
         <Route path="/audit" element={<AuditLogPage context={ctx} />} />
         <Route path="*" element={<Navigate to="/workspace" replace />} />
