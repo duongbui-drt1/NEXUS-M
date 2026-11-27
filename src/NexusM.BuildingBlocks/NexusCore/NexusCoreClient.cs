@@ -30,10 +30,18 @@ public sealed record UserAuthorizationSnapshot(
     IReadOnlySet<string> Permissions,
     OrganizationScopeSnapshot OrgScope);
 
+public sealed record FxRateQuoteDto(
+    string BaseCurrency,
+    string QuoteCurrency,
+    decimal Rate,
+    DateTimeOffset AsOfUtc,
+    string Source = "NEXUS_C_FX");
+
 public interface INexusCoreClient
 {
     Task<Result<EntitlementEvaluationDto>> EvaluateEntitlementAsync(Guid tenantId, string featureCode, string userBearerToken, string correlationId, CancellationToken ct = default);
     Task<Result<UserAuthorizationSnapshot>> GetUserAuthorizationSnapshotAsync(Guid tenantId, Guid userId, string userBearerToken, string correlationId, CancellationToken ct = default);
+    Task<Result<FxRateQuoteDto>> GetFxRateAsync(string baseCurrency, string quoteCurrency, string userBearerToken, string correlationId, CancellationToken ct = default);
     Task<Result<bool>> SyncPermissionManifestAsync(string correlationId, CancellationToken ct = default);
 }
 
@@ -154,6 +162,58 @@ public sealed class NexusCoreHttpClient(
         {
             logger.LogError(ex, "NEXUS C authorization snapshot failed (fail-closed) for tenant {TenantId}, user {UserId}", tenantId, userId);
             return Error.ServiceUnavailable("NEXUS_C_UNREACHABLE", "NEXUS C authorization authority is unreachable (fail-closed).");
+        }
+    }
+
+    public async Task<Result<FxRateQuoteDto>> GetFxRateAsync(
+        string baseCurrency,
+        string quoteCurrency,
+        string userBearerToken,
+        string correlationId,
+        CancellationToken ct = default)
+    {
+        var from = baseCurrency.Trim().ToUpperInvariant();
+        var to = quoteCurrency.Trim().ToUpperInvariant();
+        if (from == to)
+        {
+            return new FxRateQuoteDto(from, to, 1m, DateTimeOffset.UtcNow, "IDENTITY");
+        }
+
+        var cacheKey = $"nexus-m:fx:{from}:{to}";
+        if (cache.TryGetValue<FxRateQuoteDto>(cacheKey, out var cached) && cached is not null)
+        {
+            return cached;
+        }
+
+        try
+        {
+            using var req = new HttpRequestMessage(
+                HttpMethod.Get,
+                $"/api/v1/platform/fx/convert?from={Uri.EscapeDataString(from)}&to={Uri.EscapeDataString(to)}&amount=1");
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", userBearerToken);
+            req.Headers.TryAddWithoutValidation("X-Correlation-Id", correlationId);
+
+            using var resp = await httpClient.SendAsync(req, ct);
+            if (!resp.IsSuccessStatusCode)
+            {
+                return Error.ServiceUnavailable("NEXUS_C_FX_UNAVAILABLE", $"Unable to fetch FX rate {from}->{to} from NEXUS C.");
+            }
+
+            var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
+            var data = doc.GetProperty("data");
+            var rate = data.TryGetProperty("rate", out var r) ? r.GetDecimal() : data.GetProperty("convertedAmount").GetDecimal();
+            var asOf = data.TryGetProperty("effectiveDate", out var ed) && DateTimeOffset.TryParse(ed.GetString(), out var parsed)
+                ? parsed
+                : DateTimeOffset.UtcNow;
+
+            var quote = new FxRateQuoteDto(from, to, rate, asOf);
+            cache.Set(cacheKey, quote, TimeSpan.FromMinutes(15));
+            return quote;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "NEXUS C FX lookup failed for {From}->{To}", from, to);
+            return Error.ServiceUnavailable("NEXUS_C_FX_UNREACHABLE", "NEXUS C FX service is unreachable.");
         }
     }
 

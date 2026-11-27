@@ -31,6 +31,6 @@ public static class NexusMModuleCatalog
         new("M07", "modules.m07.board_reporting", "/board-reports", "NEXUS_M", NexusMPermissions.ReportRead, ModuleMaturity.Planned, 70),
         new("M08", "modules.m08.performance", "/performance", "NEXUS_M", NexusMPermissions.PerformanceRead, ModuleMaturity.Planned, 80),
         new("M09", "modules.m09.ai", "/ai-assistant", "NEXUS_M_AI", NexusMPermissions.AiInvoke, ModuleMaturity.Planned, 90),
-        new("M10", "modules.m10.integrations", "/integrations", "NEXUS_M", NexusMPermissions.IntegrationRead, ModuleMaturity.Planned, 100)
+        new("M10", "modules.m10.integrations", "/integrations", "NEXUS_M", NexusMPermissions.IntegrationRead, ModuleMaturity.Implemented, 100)
     ];
 }

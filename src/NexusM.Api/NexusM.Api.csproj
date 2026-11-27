@@ -4,6 +4,8 @@
     <ProjectReference Include="..\NexusM.BuildingBlocks\NexusM.BuildingBlocks.csproj" />
     <ProjectReference Include="..\Modules\Audit\NexusM.Modules.Audit.csproj" />
     <ProjectReference Include="..\Modules\Foundation\NexusM.Modules.Foundation.csproj" />
+    <ProjectReference Include="..\Modules\Metrics\NexusM.Modules.Metrics.csproj" />
+    <ProjectReference Include="..\Modules\Integration\NexusM.Modules.Integration.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />

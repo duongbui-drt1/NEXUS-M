@@ -9,6 +9,10 @@ using NexusM.BuildingBlocks.Web;
 using NexusM.Modules.Audit;
 using NexusM.Modules.Foundation.Application;
 using NexusM.Modules.Foundation.Infrastructure;
+using NexusM.Modules.Integration.Application;
+using NexusM.Modules.Integration.Infrastructure;
+using NexusM.Modules.Metrics.Application;
+using NexusM.Modules.Metrics.Infrastructure;
 using NexusM.SharedKernel.Audit;
 using NexusM.SharedKernel.Context;
 using OpenTelemetry.Trace;
@@ -41,6 +45,18 @@ builder.Services.AddDbContext<FoundationDbContext>((sp, opt) =>
 });
 
 builder.Services.AddDbContext<AuditDbContext>((sp, opt) =>
+{
+    opt.UseNpgsql(runtimeConnStr)
+       .AddInterceptors(sp.GetRequiredService<TenantRlsConnectionInterceptor>());
+});
+
+builder.Services.AddDbContext<MetricsDbContext>((sp, opt) =>
+{
+    opt.UseNpgsql(runtimeConnStr)
+       .AddInterceptors(sp.GetRequiredService<TenantRlsConnectionInterceptor>());
+});
+
+builder.Services.AddDbContext<IntegrationDbContext>((sp, opt) =>
 {
     opt.UseNpgsql(runtimeConnStr)
        .AddInterceptors(sp.GetRequiredService<TenantRlsConnectionInterceptor>());
@@ -85,6 +101,8 @@ builder.Services.AddScoped<BusinessAuditService>();
 builder.Services.AddScoped<IBusinessAuditWriter>(sp => sp.GetRequiredService<BusinessAuditService>());
 builder.Services.AddScoped<IBusinessAuditReader>(sp => sp.GetRequiredService<BusinessAuditService>());
 builder.Services.AddScoped<IFoundationService, FoundationService>();
+builder.Services.AddScoped<IMetricsService, MetricsService>();
+builder.Services.AddScoped<IIntegrationService, IntegrationService>();
 
 // Web, OpenAPI, Exception Handling, CORS
 builder.Services.AddControllers();

@@ -26,11 +26,19 @@ public sealed class StubNexusCoreClient : INexusCoreClient
             new HashSet<string>(StringComparer.OrdinalIgnoreCase),
             OrganizationScopeSnapshot.Empty);
 
+    public Func<string, string, Result<FxRateQuoteDto>> FxHandler { get; set; }
+        = (from, to) => from.Equals(to, StringComparison.OrdinalIgnoreCase)
+            ? new FxRateQuoteDto(from, to, 1m, DateTimeOffset.UtcNow, "IDENTITY")
+            : new FxRateQuoteDto(from, to, 25000m, new DateTimeOffset(2026, 11, 27, 0, 0, 0, TimeSpan.Zero), "NEXUS_C_FX");
+
     public Task<Result<EntitlementEvaluationDto>> EvaluateEntitlementAsync(Guid tenantId, string featureCode, string userBearerToken, string correlationId, CancellationToken ct = default)
         => Task.FromResult(EntitlementHandler(tenantId, featureCode));
 
     public Task<Result<UserAuthorizationSnapshot>> GetUserAuthorizationSnapshotAsync(Guid tenantId, Guid userId, string userBearerToken, string correlationId, CancellationToken ct = default)
         => Task.FromResult(AuthzHandler(tenantId, userId));
+
+    public Task<Result<FxRateQuoteDto>> GetFxRateAsync(string baseCurrency, string quoteCurrency, string userBearerToken, string correlationId, CancellationToken ct = default)
+        => Task.FromResult(FxHandler(baseCurrency, quoteCurrency));
 
     public Task<Result<bool>> SyncPermissionManifestAsync(string correlationId, CancellationToken ct = default)
         => Task.FromResult<Result<bool>>(true);
