@@ -40,6 +40,24 @@ public sealed class StubNexusCoreClient : INexusCoreClient
     public Task<Result<FxRateQuoteDto>> GetFxRateAsync(string baseCurrency, string quoteCurrency, string userBearerToken, string correlationId, CancellationToken ct = default)
         => Task.FromResult(FxHandler(baseCurrency, quoteCurrency));
 
+    public Task<Result<CoreWorkflowStartResultDto>> StartWorkflowInstanceAsync(string workflowDefinitionCode, string businessReferenceId, string title, string userBearerToken, string correlationId, CancellationToken ct = default)
+        => Task.FromResult<Result<CoreWorkflowStartResultDto>>(new CoreWorkflowStartResultDto(Guid.CreateVersion7(), Guid.CreateVersion7(), "Submitted"));
+
+    public Task<Result<CoreWorkflowDecisionResultDto>> DecideWorkflowTaskAsync(Guid cTaskId, string decision, string? comment, string userBearerToken, string correlationId, CancellationToken ct = default)
+        => Task.FromResult<Result<CoreWorkflowDecisionResultDto>>(new CoreWorkflowDecisionResultDto(Guid.CreateVersion7(), decision, decision));
+
+    public Task<Result<bool>> SendNotificationAsync(Guid recipientUserId, string subject, string body, string idempotencyKey, string userBearerToken, string correlationId, CancellationToken ct = default)
+        => Task.FromResult<Result<bool>>(true);
+
+    public Task<Result<CoreAiGatewayResultDto>> InvokeAiGatewayAsync(string modelCode, string groundedPrompt, string userBearerToken, string correlationId, CancellationToken ct = default)
+        => Task.FromResult<Result<CoreAiGatewayResultDto>>(new CoreAiGatewayResultDto(
+            "NEXUS_C_AI",
+            modelCode,
+            $"Grounded summary generated strictly from cited metrics ({groundedPrompt.Length} chars).",
+            PromptTokens: 180,
+            CompletionTokens: 64,
+            EstimatedCostUsd: 0.00042m));
+
     public Task<Result<bool>> SyncPermissionManifestAsync(string correlationId, CancellationToken ct = default)
         => Task.FromResult<Result<bool>>(true);
 }

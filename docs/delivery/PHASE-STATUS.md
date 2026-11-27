@@ -5,15 +5,15 @@
 
 | Phase | Name | Status | Branch / Evidence |
 |---|---|---|---|
-| **Phase 0** | Repository & Product Audit | **Verified** | Approved Phase 0 Audit Report; verified `duongbui-drt1/NEXUS-M` + NEXUS C 1.0 contracts |
-| **Phase 1** | Architecture & Domain Freeze | **Verified** | Branch `docs/m-phase1-architecture-freeze` (`6cbcd3d`, `db7a144`): 7 ADRs (`ADR-001`..`ADR-007`), `DATA-OWNERSHIP.md`, `SECURITY-ARCHITECTURE.md`, `INTEGRATION-ARCHITECTURE.md`, `API-CONVENTIONS.md`, `EVENT-CONTRACTS.md`, `MVP-SCOPE.md` |
-| **Phase 2** | Management Foundation (`M00`) | **Verified** | Branch `feat/m-foundation` (`e5f894e`, `2a0f20c`, `768e34b`): GitHub Actions CI PASS (`56s`), .NET 10 + PG 17 `FORCE RLS` + immutable `m_audit`, React 19/TS Console |
-| **Phase 3** | Data, Integration & KPI Foundation (`M10` + `M02` Catalog) | **Verified (Ready for Gate Review)** | Branch `feat/m-data-kpi-foundation`: `m_metrics` (versioned immutable formulas, anti-mixing guardrails, NEXUS C FX normalization, freshness/quality, org-scope enforcement) + `m_integration` (connectors with vault-only secret refs, idempotent inbox, DLQ bounded replay, reconciliations), 12/12 `FORCE RLS` tables, 5/5 Backend tests + 3/3 Frontend tests PASS |
-| **Phase 4** | Executive Intelligence (`M01`) | Proposed | Next phase after Phase 3 Gate review |
-| **Phase 5** | Business Intelligence (`M02`) | Proposed | Blocked on Phase 4 |
-| **Phase 6** | Workflow & Approval Hub (`M03`) | Proposed | Blocked on Phase 5 |
-| **Phase 7** | Organization & People (`M04`) | Proposed | Post-MVP |
-| **Phase 8** | Risk & Compliance (`M05`, `M06`) | Proposed | Post-MVP |
-| **Phase 9** | Corporate Reporting & Performance (`M07`, `M08`) | Proposed | Post-MVP |
-| **Phase 10** | Optional AI Intelligence (`M09`) | Proposed | Post-MVP (requires mature data quality, AuthZ & audit) |
-| **Phase 11** | Production Hardening | Proposed | Release Gate |
+| **Phase 0** | Repository & Product Audit | **Verified** | Approved Phase 0 Audit Report (`duongbui-drt1/NEXUS-M` + NEXUS C 1.0 contracts) |
+| **Phase 1** | Architecture & Domain Freeze | **Verified** | `docs/m-phase1-architecture-freeze` (`6cbcd3d`, `db7a144`): `ADR-001`..`ADR-007` + Architecture/API/Event blueprints |
+| **Phase 2** | Management Foundation (`M00`) | **Verified** | `feat/m-foundation` (`e5f894e`, `2a0f20c`, `768e34b`) + NEXUS C `521c94e`: CI PASS (`56s`) |
+| **Phase 3** | Data, Integration & KPI Foundation (`M10` + `M02` Catalog) | **Verified** | `feat/m-data-kpi-foundation` (`efd4fc3`, `30a08b7`): CI PASS (`1m1s`) |
+| **Phase 4** | Executive Intelligence (`M01`) | **Verified** | `feat/m-complete-platform-1.0`: `m_executive` dashboards, period delta %, alerts, SSE push |
+| **Phase 5** | Business Intelligence (`M02`) | **Verified** | `feat/m-complete-platform-1.0`: `m_bi` saved reports, immutable SHA-256 snapshots, audited exports |
+| **Phase 6** | Workflow & Approval Hub (`M03`) | **Verified** | `feat/m-complete-platform-1.0`: `m_workflow` backed by NEXUS C workflow engine, Maker-Checker, `Idempotency-Key` |
+| **Phase 7** | Organization & People (`M04`) | **Verified** | `feat/m-complete-platform-1.0`: `m_org` unit overlays, positions, effective-dated historical assignments |
+| **Phase 8** | Risk & Compliance (`M05`, `M06`) | **Verified** | `feat/m-complete-platform-1.0`: `m_governance` risk matrix, immutable history, multi-jurisdiction compliance |
+| **Phase 9** | Corporate Reporting & Performance (`M07`, `M08`) | **Verified** | `feat/m-complete-platform-1.0`: `m_performance` board packs, OKR target-vs-actual, Enterprise Search |
+| **Phase 10** | Optional AI Intelligence (`M09`) | **Verified** | `feat/m-complete-platform-1.0`: `m_ai` `NEXUS_M_AI`-gated grounded assistant, citations, autonomous actions forbidden |
+| **Phase 11** | Production Hardening | **Verified** | `37/37` `FORCE RLS` tables across 11 schemas, 5 immutable tables, `8/8` Backend Release tests PASS, `4/4` Frontend Vitest PASS, `pg_dump` restore drill PASS |
