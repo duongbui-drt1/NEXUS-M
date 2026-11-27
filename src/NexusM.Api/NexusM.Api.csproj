@@ -6,6 +6,13 @@
     <ProjectReference Include="..\Modules\Foundation\NexusM.Modules.Foundation.csproj" />
     <ProjectReference Include="..\Modules\Metrics\NexusM.Modules.Metrics.csproj" />
     <ProjectReference Include="..\Modules\Integration\NexusM.Modules.Integration.csproj" />
+    <ProjectReference Include="..\Modules\Executive\NexusM.Modules.Executive.csproj" />
+    <ProjectReference Include="..\Modules\Bi\NexusM.Modules.Bi.csproj" />
+    <ProjectReference Include="..\Modules\Workflow\NexusM.Modules.Workflow.csproj" />
+    <ProjectReference Include="..\Modules\Organization\NexusM.Modules.Organization.csproj" />
+    <ProjectReference Include="..\Modules\Governance\NexusM.Modules.Governance.csproj" />
+    <ProjectReference Include="..\Modules\Performance\NexusM.Modules.Performance.csproj" />
+    <ProjectReference Include="..\Modules\Ai\NexusM.Modules.Ai.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />

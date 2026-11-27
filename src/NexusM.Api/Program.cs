@@ -1,20 +1,30 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using NexusM.BuildingBlocks.NexusCore;
 using NexusM.BuildingBlocks.Persistence;
+using NexusM.BuildingBlocks.Realtime;
 using NexusM.BuildingBlocks.Security;
 using NexusM.BuildingBlocks.Web;
+using NexusM.Modules.Ai;
 using NexusM.Modules.Audit;
+using NexusM.Modules.Bi;
+using NexusM.Modules.Executive;
 using NexusM.Modules.Foundation.Application;
 using NexusM.Modules.Foundation.Infrastructure;
+using NexusM.Modules.Governance;
 using NexusM.Modules.Integration.Application;
 using NexusM.Modules.Integration.Infrastructure;
 using NexusM.Modules.Metrics.Application;
 using NexusM.Modules.Metrics.Infrastructure;
+using NexusM.Modules.Organization;
+using NexusM.Modules.Performance;
+using NexusM.Modules.Workflow;
 using NexusM.SharedKernel.Audit;
 using NexusM.SharedKernel.Context;
+using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using Scalar.AspNetCore;
 using Serilog;
@@ -29,38 +39,33 @@ builder.Host.UseSerilog((ctx, cfg) =>
         .WriteTo.Console(new CompactJsonFormatter());
 });
 
-// Core context & caching
+// Core context, realtime broadcaster & caching
 builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<IRealtimeBroadcaster, InMemoryRealtimeBroadcaster>();
 builder.Services.AddScoped<IRequestContext, RequestContext>();
 builder.Services.AddScoped<TenantRlsConnectionInterceptor>();
 
-// Database (EF Core + PostgreSQL + FORCE RLS interceptor)
+// Database (EF Core + PostgreSQL 17 + FORCE RLS interceptor across all bounded contexts)
 var runtimeConnStr = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("ConnectionStrings:Default is required.");
 
-builder.Services.AddDbContext<FoundationDbContext>((sp, opt) =>
+void ConfigureModuleDb<TContext>(IServiceProvider sp, DbContextOptionsBuilder opt) where TContext : DbContext
 {
     opt.UseNpgsql(runtimeConnStr)
        .AddInterceptors(sp.GetRequiredService<TenantRlsConnectionInterceptor>());
-});
+}
 
-builder.Services.AddDbContext<AuditDbContext>((sp, opt) =>
-{
-    opt.UseNpgsql(runtimeConnStr)
-       .AddInterceptors(sp.GetRequiredService<TenantRlsConnectionInterceptor>());
-});
-
-builder.Services.AddDbContext<MetricsDbContext>((sp, opt) =>
-{
-    opt.UseNpgsql(runtimeConnStr)
-       .AddInterceptors(sp.GetRequiredService<TenantRlsConnectionInterceptor>());
-});
-
-builder.Services.AddDbContext<IntegrationDbContext>((sp, opt) =>
-{
-    opt.UseNpgsql(runtimeConnStr)
-       .AddInterceptors(sp.GetRequiredService<TenantRlsConnectionInterceptor>());
-});
+builder.Services.AddDbContext<FoundationDbContext>(ConfigureModuleDb<FoundationDbContext>);
+builder.Services.AddDbContext<AuditDbContext>(ConfigureModuleDb<AuditDbContext>);
+builder.Services.AddDbContext<MetricsDbContext>(ConfigureModuleDb<MetricsDbContext>);
+builder.Services.AddDbContext<IntegrationDbContext>(ConfigureModuleDb<IntegrationDbContext>);
+builder.Services.AddDbContext<ExecutiveDbContext>(ConfigureModuleDb<ExecutiveDbContext>);
+builder.Services.AddDbContext<BiDbContext>(ConfigureModuleDb<BiDbContext>);
+builder.Services.AddDbContext<WorkflowDbContext>(ConfigureModuleDb<WorkflowDbContext>);
+builder.Services.AddDbContext<OrganizationDbContext>(ConfigureModuleDb<OrganizationDbContext>);
+builder.Services.AddDbContext<GovernanceDbContext>(ConfigureModuleDb<GovernanceDbContext>);
+builder.Services.AddDbContext<PerformanceDbContext>(ConfigureModuleDb<PerformanceDbContext>);
+builder.Services.AddDbContext<AiDbContext>(ConfigureModuleDb<AiDbContext>);
 
 // NEXUS C Integration Client (ADR-001)
 builder.Services.Configure<NexusCoreOptions>(builder.Configuration.GetSection(NexusCoreOptions.SectionName));
@@ -96,13 +101,36 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// Module Services
+// Rate Limiting
+builder.Services.AddRateLimiter(opt =>
+{
+    opt.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    opt.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+    {
+        var key = ctx.User.FindFirst("tid")?.Value ?? ctx.Connection.RemoteIpAddress?.ToString() ?? "global";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 300,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
+    });
+});
+
+// Module Application Services (M00 - M10)
 builder.Services.AddScoped<BusinessAuditService>();
 builder.Services.AddScoped<IBusinessAuditWriter>(sp => sp.GetRequiredService<BusinessAuditService>());
 builder.Services.AddScoped<IBusinessAuditReader>(sp => sp.GetRequiredService<BusinessAuditService>());
 builder.Services.AddScoped<IFoundationService, FoundationService>();
 builder.Services.AddScoped<IMetricsService, MetricsService>();
 builder.Services.AddScoped<IIntegrationService, IntegrationService>();
+builder.Services.AddScoped<IExecutiveService, ExecutiveService>();
+builder.Services.AddScoped<IBiService, BiService>();
+builder.Services.AddScoped<IWorkflowHubService, WorkflowHubService>();
+builder.Services.AddScoped<IOrganizationOverlayService, OrganizationOverlayService>();
+builder.Services.AddScoped<IGovernanceService, GovernanceService>();
+builder.Services.AddScoped<IPerformanceService, PerformanceService>();
+builder.Services.AddScoped<IExecutiveAiService, ExecutiveAiService>();
 
 // Web, OpenAPI, Exception Handling, CORS
 builder.Services.AddControllers();
@@ -121,16 +149,16 @@ builder.Services.AddCors(opt =>
     });
 });
 
-// Observability & Health Checks
+// Observability (Traces + Metrics) & Health Checks
 builder.Services.AddOpenTelemetry()
-    .WithTracing(t => t.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation());
+    .WithTracing(t => t.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation())
+    .WithMetrics(m => m.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation());
 
 builder.Services.AddHealthChecks()
     .AddNpgSql(runtimeConnStr, name: "postgresql", tags: ["ready"]);
 
 var app = builder.Build();
 
-// Apply idempotent Phase 2 schema/RLS DDL when migrator connection is configured and not disabled
 var autoBootstrap = builder.Configuration.GetValue("Database:AutoBootstrap", true);
 var migratorConnStr = builder.Configuration.GetConnectionString("Migrator");
 if (autoBootstrap && !string.IsNullOrWhiteSpace(migratorConnStr))
@@ -142,6 +170,8 @@ app.UseExceptionHandler();
 app.UseCors("ConsoleCors");
 app.UseAuthentication();
 app.UseMiddleware<CorrelationAndRequestContextMiddleware>();
+app.UseRateLimiter();
+app.UseMiddleware<IdempotencyMiddleware>();
 app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())

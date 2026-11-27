@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using NexusM.BuildingBlocks.Realtime;
 using NexusM.BuildingBlocks.Security;
 using NexusM.BuildingBlocks.Web;
 using NexusM.Modules.Audit;
@@ -83,42 +84,48 @@ public sealed class AuditController(IBusinessAuditReader auditReader) : Controll
 
 [ApiController]
 [Route("api/v1/m/realtime")]
-public sealed class RealtimeController(IRequestContext requestContext) : ControllerBase
+public sealed class RealtimeController(IRequestContext requestContext, IRealtimeBroadcaster broadcaster) : ControllerBase
 {
     /// <summary>
-    /// Authenticated, tenant-scoped Server-Sent Events stream (ADR-005).
+    /// Authenticated, tenant-isolated Server-Sent Events stream (ADR-005).
     /// </summary>
     [HttpGet("stream")]
     [RequireNexusMPermission(NexusMPermissions.WorkspaceRead)]
     public async Task Stream(CancellationToken ct)
     {
+        var tenantId = requestContext.TenantId!.Value;
         Response.Headers.ContentType = "text/event-stream";
         Response.Headers.CacheControl = "no-cache";
         Response.Headers.Connection = "keep-alive";
 
-        var connectedPayload = System.Text.Json.JsonSerializer.Serialize(new
-        {
-            eventType = "management.realtime.connected.v1",
-            tenantId = requestContext.TenantId,
-            correlationId = requestContext.CorrelationId,
-            occurredAt = DateTimeOffset.UtcNow
-        });
-
-        await Response.WriteAsync($"event: connected\ndata: {connectedPayload}\n\n", ct);
-        await Response.Body.FlushAsync(ct);
-
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(25));
+        var reader = broadcaster.Subscribe(tenantId, out var subscriptionId);
         try
         {
-            while (await timer.WaitForNextTickAsync(ct))
+            var connectedPayload = System.Text.Json.JsonSerializer.Serialize(new
             {
-                await Response.WriteAsync($": heartbeat {DateTimeOffset.UtcNow:O}\n\n", ct);
+                eventType = "management.realtime.connected.v1",
+                tenantId,
+                correlationId = requestContext.CorrelationId,
+                occurredAt = DateTimeOffset.UtcNow
+            });
+
+            await Response.WriteAsync($"event: connected\ndata: {connectedPayload}\n\n", ct);
+            await Response.Body.FlushAsync(ct);
+
+            await foreach (var evt in reader.ReadAllAsync(ct))
+            {
+                var json = System.Text.Json.JsonSerializer.Serialize(evt);
+                await Response.WriteAsync($"event: {evt.EventType}\ndata: {json}\n\n", ct);
                 await Response.Body.FlushAsync(ct);
             }
         }
         catch (OperationCanceledException)
         {
             // Normal client disconnect
+        }
+        finally
+        {
+            broadcaster.Unsubscribe(tenantId, subscriptionId);
         }
     }
 }

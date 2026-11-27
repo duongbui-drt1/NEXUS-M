@@ -6,6 +6,13 @@
     <Project Path="src/Modules/Foundation/NexusM.Modules.Foundation.csproj" />
     <Project Path="src/Modules/Metrics/NexusM.Modules.Metrics.csproj" />
     <Project Path="src/Modules/Integration/NexusM.Modules.Integration.csproj" />
+    <Project Path="src/Modules/Executive/NexusM.Modules.Executive.csproj" />
+    <Project Path="src/Modules/Bi/NexusM.Modules.Bi.csproj" />
+    <Project Path="src/Modules/Workflow/NexusM.Modules.Workflow.csproj" />
+    <Project Path="src/Modules/Organization/NexusM.Modules.Organization.csproj" />
+    <Project Path="src/Modules/Governance/NexusM.Modules.Governance.csproj" />
+    <Project Path="src/Modules/Performance/NexusM.Modules.Performance.csproj" />
+    <Project Path="src/Modules/Ai/NexusM.Modules.Ai.csproj" />
     <Project Path="src/NexusM.Api/NexusM.Api.csproj" />
   </Folder>
   <Folder Name="/tests/">
