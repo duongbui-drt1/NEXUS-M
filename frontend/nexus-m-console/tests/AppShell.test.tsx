@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppShell } from '../src/components/AppShell';
 import { AuditLogPage, WorkspacePage } from '../src/pages/FoundationPages';
 import { IntegrationsPage, KpiCatalogPage } from '../src/pages/Phase3DataPages';
+import { AiAssistantPage, CompliancePage, ExecutiveDashboardPage, RiskGovernancePage, WorkflowInboxPage } from '../src/pages/Phase4To10Pages';
 import type { ManagementContextDto } from '../src/types';
 
 function makeContext(permissions: string[]): ManagementContextDto {
@@ -121,5 +122,21 @@ describe('NEXUS M AppShell & Permission-Aware Rendering', () => {
       </QueryClientProvider>,
     );
     expect(screen.getByRole('alert')).toHaveTextContent('Vui lòng liên hệ Admin để xem chi tiết');
+  });
+
+  it('guards M01 Executive, M03 Workflow, M05 Risk, M06 Compliance and M09 AI Assistant when unentitled or unauthorized', () => {
+    const qc = new QueryClient();
+    // Even if m.ai.invoke is in permissions, M09 isentitled=false in makeContext so AiAssistantPage MUST block!
+    const ctxAiBlocked = makeContext(['m.workspace.read', 'm.ai.invoke']);
+
+    for (const Page of [ExecutiveDashboardPage, WorkflowInboxPage, RiskGovernancePage, CompliancePage, AiAssistantPage]) {
+      const { unmount } = render(
+        <QueryClientProvider client={qc}>
+          <Page context={ctxAiBlocked} />
+        </QueryClientProvider>,
+      );
+      expect(screen.getByRole('alert')).toHaveTextContent('Vui lòng liên hệ Admin để xem chi tiết');
+      unmount();
+    }
   });
 });

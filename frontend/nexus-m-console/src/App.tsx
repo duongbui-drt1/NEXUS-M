@@ -5,6 +5,17 @@ import { getStoredToken, nexusMApi, setStoredToken } from './api/client';
 import { AppShell, ForbiddenBanner } from './components/AppShell';
 import { AuditLogPage, ModuleRegistryPage, PreferencesPage, WorkspacePage } from './pages/FoundationPages';
 import { IntegrationsPage, KpiCatalogPage } from './pages/Phase3DataPages';
+import {
+  AiAssistantPage,
+  BiWorkspacePage,
+  BoardReportingPage,
+  CompliancePage,
+  ExecutiveDashboardPage,
+  OrganizationPage,
+  PerformanceOkrPage,
+  RiskGovernancePage,
+  WorkflowInboxPage,
+} from './pages/Phase4To10Pages';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -95,6 +106,15 @@ const AuthenticatedApp: React.FC = () => {
         <Route path="/workspace" element={<WorkspacePage context={ctx} />} />
         <Route path="/modules" element={<ModuleRegistryPage context={ctx} />} />
         <Route path="/kpis" element={<KpiCatalogPage context={ctx} />} />
+        <Route path="/executive" element={<ExecutiveDashboardPage context={ctx} />} />
+        <Route path="/bi" element={<BiWorkspacePage context={ctx} />} />
+        <Route path="/workflows" element={<WorkflowInboxPage context={ctx} />} />
+        <Route path="/organization" element={<OrganizationPage context={ctx} />} />
+        <Route path="/risk" element={<RiskGovernancePage context={ctx} />} />
+        <Route path="/compliance" element={<CompliancePage context={ctx} />} />
+        <Route path="/board-reports" element={<BoardReportingPage context={ctx} />} />
+        <Route path="/performance" element={<PerformanceOkrPage context={ctx} />} />
+        <Route path="/ai-assistant" element={<AiAssistantPage context={ctx} />} />
         <Route path="/integrations" element={<IntegrationsPage context={ctx} />} />
         <Route path="/preferences" element={<PreferencesPage context={ctx} />} />
         <Route path="/audit" element={<AuditLogPage context={ctx} />} />

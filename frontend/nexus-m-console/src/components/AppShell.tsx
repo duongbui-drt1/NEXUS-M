@@ -1,7 +1,8 @@
-import React from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
-import { Building2, Database, Gauge, Layers, ShieldCheck, SlidersHorizontal, Lock } from 'lucide-react';
-import type { ManagementContextDto } from '../types';
+import React, { useState } from 'react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Building2, Database, Gauge, Layers, Search, ShieldCheck, SlidersHorizontal, Lock } from 'lucide-react';
+import { nexusMApi } from '../api/client';
+import type { EnterpriseSearchHitDto, ManagementContextDto } from '../types';
 
 const MODULE_LABELS: Record<string, { vi: string; en: string }> = {
   M00: { vi: 'Không gian quản trị (M00)', en: 'Management Foundation (M00)' },
@@ -31,10 +32,23 @@ interface AppShellProps {
 }
 
 export const AppShell: React.FC<AppShellProps> = ({ context, onLogout }) => {
+  const navigate = useNavigate();
   const isVi = context.preferences.locale.toLowerCase().startsWith('vi');
   const lang = isVi ? 'vi' : 'en';
   const hasAudit = context.permissions.includes('m.audit.read');
   const hasKpi = context.permissions.includes('m.kpi.read');
+  const [searchQ, setSearchQ] = useState('');
+  const [hits, setHits] = useState<EnterpriseSearchHitDto[]>([]);
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQ.trim().length < 2) {
+      setHits([]);
+      return;
+    }
+    const res = await nexusMApi.search(searchQ.trim()).catch(() => null);
+    setHits(res?.data ?? []);
+  };
 
   return (
     <div className="shell">
@@ -117,6 +131,29 @@ export const AppShell: React.FC<AppShellProps> = ({ context, onLogout }) => {
                 ? isVi ? 'Toàn Tenant' : 'Full Tenant Scope'
                 : `${context.orgScope.organizationUnitIds.length} Org Units`}
             </span>
+            <form onSubmit={handleSearch} className="form-row" style={{ alignItems: 'center', marginLeft: 8 }}>
+              <Search size={14} />
+              <input
+                aria-label="Global enterprise search"
+                placeholder={isVi ? 'Tìm KPI, Báo cáo, Rủi ro...' : 'Search KPIs, Reports, Risks...'}
+                value={searchQ}
+                onChange={(e) => setSearchQ(e.target.value)}
+                style={{ padding: '4px 8px', fontSize: 12 }}
+              />
+            </form>
+            {hits.length > 0 && (
+              <button
+                type="button"
+                className="pill"
+                onClick={() => {
+                  const first = hits[0];
+                  setHits([]);
+                  navigate(first.route);
+                }}
+              >
+                {hits[0].category}: {hits[0].title}
+              </button>
+            )}
           </div>
           <div className="topbar-right">
             <span className="user-email">{context.email}</span>

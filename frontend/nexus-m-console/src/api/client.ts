@@ -1,14 +1,25 @@
 import type {
+  AiAskResponseDto,
   ApiResponse,
+  ApprovalRequestDto,
+  BoardReportPackageDto,
   BusinessAuditDto,
+  ComplianceObligationDto,
   DataConnectorDto,
   DeadLetterItemDto,
+  EnterpriseSearchHitDto,
+  EvaluatedObjectiveDto,
+  ExecutiveDashboardDto,
   IngestionRunDto,
+  ManagementAlertDto,
   ManagementContextDto,
   MetricDefinitionDto,
   PagedResult,
   ReconciliationRecordDto,
+  RiskItemDto,
+  SavedReportDto,
   UserPreferenceDto,
+  WorkforceOverviewDto,
   WorkspaceDto,
 } from '../types';
 
@@ -111,4 +122,20 @@ export const nexusMApi = {
   listDeadLetters: () => request<DeadLetterItemDto[]>('/api/v1/m/integrations/dead-letters'),
   retryDeadLetter: (id: string) => request<DeadLetterItemDto>(`/api/v1/m/integrations/dead-letters/${id}/retry`, { method: 'POST' }),
   listReconciliations: () => request<ReconciliationRecordDto[]>('/api/v1/m/integrations/reconciliations'),
+  listDashboards: () => request<ExecutiveDashboardDto[]>('/api/v1/m/executive/dashboards'),
+  listAlerts: () => request<ManagementAlertDto[]>('/api/v1/m/executive/alerts'),
+  listBiReports: () => request<SavedReportDto[]>('/api/v1/m/bi/reports'),
+  listWorkflowInbox: () => request<ApprovalRequestDto[]>('/api/v1/m/workflows/inbox'),
+  getOrgOverview: (asOfDate?: string) =>
+    request<WorkforceOverviewDto>(`/api/v1/m/org/overview${asOfDate ? `?asOfDate=${encodeURIComponent(asOfDate)}` : ''}`),
+  listRisks: () => request<RiskItemDto[]>('/api/v1/m/risks'),
+  listObligations: () => request<ComplianceObligationDto[]>('/api/v1/m/compliance/obligations'),
+  listBoardReports: () => request<BoardReportPackageDto[]>('/api/v1/m/board-reports'),
+  listObjectives: (periodStartUtc: string, periodEndUtc: string) =>
+    request<EvaluatedObjectiveDto[]>(
+      `/api/v1/m/performance/objectives?periodStartUtc=${encodeURIComponent(periodStartUtc)}&periodEndUtc=${encodeURIComponent(periodEndUtc)}`,
+    ),
+  askAi: (payload: { question: string; metricCodes: string[] }) =>
+    request<AiAskResponseDto>('/api/v1/m/ai/ask', { method: 'POST', body: JSON.stringify(payload) }),
+  search: (q: string) => request<EnterpriseSearchHitDto[]>(`/api/v1/m/search?q=${encodeURIComponent(q)}`),
 };

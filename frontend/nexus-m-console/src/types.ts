@@ -162,3 +162,134 @@ export interface ReconciliationRecordDto {
   status: 'MATCHED' | 'DISCREPANCY';
   checkedAtUtc: string;
 }
+
+export interface ExecutiveDashboardDto {
+  id: string;
+  code: string;
+  title: string;
+  audienceRole: string;
+  isDefault: boolean;
+  version: number;
+}
+
+export interface ManagementAlertDto {
+  id: string;
+  metricCode: string;
+  severity: string;
+  summary: string;
+  observedValue?: number | null;
+  freshnessStatus: string;
+  status: string;
+  triggeredAtUtc: string;
+}
+
+export interface SavedReportDto {
+  id: string;
+  code: string;
+  title: string;
+  metricCodesCsv: string;
+  normalizeToCurrency?: string | null;
+  scheduleCron?: string | null;
+  createdAtUtc: string;
+}
+
+export interface ApprovalRequestDto {
+  id: string;
+  title: string;
+  category: string;
+  summary: string;
+  requestedByUserId: string;
+  status: string;
+  slaDueAtUtc: string;
+  version: number;
+  createdAtUtc: string;
+}
+
+export interface WorkforceOverviewDto {
+  asOfDate: string;
+  totalUnits: number;
+  totalPositions: number;
+  activeAssignmentsCount: number;
+  totalFteAllocated: number;
+  totalHeadcountTarget: number;
+  units: { id: string; code: string; name: string; unitType: string; headcountTarget: number }[];
+  positions: { id: string; code: string; title: string; isExecutiveSeat: boolean }[];
+  activeAssignments: { id: string; userDisplayEmail: string; validFromDate: string; validToDate?: string | null; allocationPercent: number }[];
+}
+
+export interface RiskItemDto {
+  id: string;
+  code: string;
+  title: string;
+  category: string;
+  likelihood: number;
+  impact: number;
+  score: number;
+  riskLevel: string;
+  status: string;
+  assessmentVersion: number;
+}
+
+export interface ComplianceObligationDto {
+  id: string;
+  code: string;
+  title: string;
+  jurisdictionCode: string;
+  regulatorySource: string;
+  contentValidationStatus: string;
+  dueAtUtc: string;
+  status: string;
+}
+
+export interface BoardReportPackageDto {
+  id: string;
+  code: string;
+  title: string;
+  consolidationCurrency: string;
+  metricCodesCsv: string;
+  sha256Checksum: string;
+  status: string;
+  createdAtUtc: string;
+}
+
+export interface EvaluatedObjectiveDto {
+  id: string;
+  code: string;
+  title: string;
+  periodCode: string;
+  keyResults: {
+    id: string;
+    title: string;
+    linkedMetricCode?: string | null;
+    targetValue: number;
+    actualValue?: number | null;
+    attainmentPercent?: number | null;
+    freshnessStatus?: string | null;
+  }[];
+}
+
+export interface AiAskResponseDto {
+  answer: string;
+  provider: string;
+  modelCode: string;
+  promptTokens: number;
+  completionTokens: number;
+  estimatedCostUsd: number;
+  requiresHumanConfirmation: boolean;
+  citations: {
+    metricCode: string;
+    definitionVersion?: number | null;
+    aggregatedValue?: number | null;
+    currencyCode?: string | null;
+    freshnessStatus: string;
+    status: string;
+  }[];
+}
+
+export interface EnterpriseSearchHitDto {
+  category: string;
+  id: string;
+  code: string;
+  title: string;
+  route: string;
+}
